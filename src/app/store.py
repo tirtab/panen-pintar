@@ -19,7 +19,7 @@ def _default_form_draft() -> dict[str, Any]:
         "symptoms": set(),
         "weather": "berawan",
         "area": 100,
-        "budget": 150000,
+        "budget": 500000,
     }
 
 

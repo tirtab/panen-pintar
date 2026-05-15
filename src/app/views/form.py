@@ -42,6 +42,9 @@ def view(state: AppState) -> ft.Control:
 
     def on_crop(key: str):
         form_state["crop"] = key
+        crop = get_crop(key)
+        if crop:
+            form_state["age"] = min(form_state["age"], crop.cycle_days)
         rebuild()
 
     def on_weather(key: str):
@@ -124,6 +127,42 @@ def view(state: AppState) -> ft.Control:
             on_toggle=toggle_symptom,
         )
 
+    def build_crop_price_card(crop) -> ft.Control:
+        if crop is None:
+            return ft.Container()
+        return card(
+            bgcolor=PALETTE.primary_soft,
+            border_color=PALETTE.primary_soft,
+            content=ft.Row(
+                [
+                    ft.Icon(
+                        ft.Icons.PAID_OUTLINED,
+                        color=PALETTE.primary,
+                        size=20,
+                    ),
+                    ft.Column(
+                        [
+                            ft.Text(
+                                f"Harga acuan {crop.name}",
+                                size=12,
+                                weight=ft.FontWeight.W_700,
+                                color=PALETTE.text_strong,
+                            ),
+                            ft.Text(
+                                f"{format_currency(crop.base_price_per_kg)} per kg",
+                                size=12,
+                                color=PALETTE.text,
+                            ),
+                        ],
+                        spacing=2,
+                        expand=True,
+                    ),
+                ],
+                spacing=10,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+        )
+
     def slider_field(
         label: str,
         value: float,
@@ -132,6 +171,7 @@ def view(state: AppState) -> ft.Control:
         divisions: int,
         on_change: callable,
         formatter: callable,
+        after_change: callable | None = None,
     ) -> ft.Control:
         value_text = ft.Text(
             formatter(value),
@@ -144,6 +184,8 @@ def view(state: AppState) -> ft.Control:
             value_text.value = formatter(e.control.value)
             on_change(e.control.value)
             value_text.update()
+            if after_change:
+                after_change(e.control.value)
 
         return ft.Column(
             [
@@ -162,6 +204,104 @@ def view(state: AppState) -> ft.Control:
                     active_color=PALETTE.primary,
                     inactive_color=PALETTE.surface_muted,
                     on_change=handler,
+                ),
+            ],
+            spacing=4,
+        )
+
+    def numeric_slider_field(
+        label: str,
+        value: float,
+        min_v: float,
+        max_v: float,
+        divisions: int,
+        on_change: callable,
+        formatter: callable,
+        input_suffix: str,
+    ) -> ft.Control:
+        value_text = ft.Text(
+            formatter(value),
+            size=13,
+            weight=ft.FontWeight.W_700,
+            color=PALETTE.primary,
+        )
+        slider = ft.Slider(
+            value=value,
+            min=min_v,
+            max=max_v,
+            divisions=divisions,
+            active_color=PALETTE.primary,
+            inactive_color=PALETTE.surface_muted,
+        )
+        text_field = ft.TextField(
+            value=str(int(value)),
+            keyboard_type=ft.KeyboardType.NUMBER,
+            dense=True,
+            text_size=13,
+            border_color=PALETTE.border,
+            focused_border_color=PALETTE.primary,
+            content_padding=ft.Padding.symmetric(horizontal=10, vertical=8),
+            width=170,
+        )
+
+        def apply_value(raw_value: float, *, sync_text: bool) -> None:
+            next_value = min(max(raw_value, min_v), max_v)
+            on_change(next_value)
+            value_text.value = formatter(next_value)
+            slider.value = next_value
+            if sync_text:
+                text_field.value = str(int(next_value))
+            value_text.update()
+            slider.update()
+            if sync_text:
+                text_field.update()
+
+        def on_slider_change(e) -> None:
+            apply_value(e.control.value, sync_text=True)
+
+        def on_text_change(e) -> None:
+            digits = "".join(ch for ch in e.control.value if ch.isdigit())
+            if not digits:
+                return
+            apply_value(float(digits), sync_text=False)
+
+        slider.on_change = on_slider_change
+        text_field.on_change = on_text_change
+
+        return ft.Column(
+            [
+                ft.Row(
+                    [
+                        ft.Text(label, size=13, color=PALETTE.text),
+                        value_text,
+                    ],
+                    alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+                ),
+                slider,
+                ft.Row(
+                    [
+                        ft.Text(
+                            "Atau ketik angka langsung",
+                            size=11,
+                            color=PALETTE.text_muted,
+                            expand=True,
+                        ),
+                        ft.Row(
+                            [
+                                text_field,
+                                ft.Text(
+                                    input_suffix,
+                                    size=12,
+                                    color=PALETTE.text_muted,
+                                ),
+                            ],
+                            spacing=6,
+                            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                            tight=True,
+                        ),
+                    ],
+                    spacing=10,
+                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
             ],
             spacing=4,
@@ -250,6 +390,29 @@ def view(state: AppState) -> ft.Control:
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
 
+        age_progress_text = ft.Text(
+            f"Umur tanam: {int(form_state['age'])} hari "
+            f"({int(age_ratio * 100)}% dari siklus)",
+            size=12,
+            weight=ft.FontWeight.W_600,
+            color=PALETTE.text_strong,
+        )
+        age_progress_bar = ft.ProgressBar(
+            value=age_ratio,
+            color=PALETTE.primary,
+            bgcolor=ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
+            bar_height=8,
+        )
+
+        def update_age_progress(v: float) -> None:
+            ratio = min(v / cycle, 1.0)
+            age_progress_text.value = (
+                f"Umur tanam: {int(v)} hari ({int(ratio * 100)}% dari siklus)"
+            )
+            age_progress_bar.value = ratio
+            age_progress_text.update()
+            age_progress_bar.update()
+
         progress_card = card(
             bgcolor=PALETTE.primary_soft,
             border_color=PALETTE.primary_soft,
@@ -258,22 +421,11 @@ def view(state: AppState) -> ft.Control:
                     ft.Row(
                         [
                             ft.Text("📈", size=18),
-                            ft.Text(
-                                f"Umur tanam: {int(form_state['age'])} hari "
-                                f"({int(age_ratio * 100)}% dari siklus)",
-                                size=12,
-                                weight=ft.FontWeight.W_600,
-                                color=PALETTE.text_strong,
-                            ),
+                            age_progress_text,
                         ],
                         spacing=8,
                     ),
-                    ft.ProgressBar(
-                        value=age_ratio,
-                        color=PALETTE.primary,
-                        bgcolor=ft.Colors.with_opacity(0.4, ft.Colors.WHITE),
-                        bar_height=8,
-                    ),
+                    age_progress_bar,
                 ],
                 spacing=8,
             ),
@@ -289,6 +441,7 @@ def view(state: AppState) -> ft.Control:
                 intro,
                 section_header(1, total_steps, "Komoditas"),
                 build_crop_grid(),
+                build_crop_price_card(crop),
                 section_header(2, total_steps, "Umur tanam"),
                 card(
                     content=slider_field(
@@ -299,6 +452,7 @@ def view(state: AppState) -> ft.Control:
                         divisions=max(cycle - 1, 10),
                         on_change=set_age,
                         formatter=lambda v: f"{int(v)} hari",
+                        after_change=update_age_progress,
                     )
                 ),
                 progress_card,
@@ -315,24 +469,26 @@ def view(state: AppState) -> ft.Control:
                 card(
                     content=ft.Column(
                         [
-                            slider_field(
+                            numeric_slider_field(
                                 label="Luas lahan",
                                 value=form_state["area"],
                                 min_v=10,
-                                max_v=2000,
-                                divisions=199,
+                                max_v=10000,
+                                divisions=999,
                                 on_change=set_area,
                                 formatter=lambda v: f"{int(v)} m²",
+                                input_suffix="m²",
                             ),
                             ft.Divider(color=PALETTE.border, height=1),
-                            slider_field(
+                            numeric_slider_field(
                                 label="Anggaran perawatan",
                                 value=form_state["budget"],
-                                min_v=20000,
-                                max_v=1500000,
-                                divisions=148,
+                                min_v=50000,
+                                max_v=5000000,
+                                divisions=99,
                                 on_change=set_budget,
                                 formatter=lambda v: format_currency(int(v)),
+                                input_suffix="Rp",
                             ),
                         ],
                         spacing=8,
