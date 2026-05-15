@@ -1,0 +1,28 @@
+[project]
+name = "panenpintar"
+version = "0.1.0"
+description = "Asisten keputusan untung-rugi untuk petani kecil."
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "PanenPintar Team", email = "you@example.com" }
+]
+dependencies = [
+    "flet>=0.85.1"
+]
+
+[dependency-groups]
+dev = [
+    "flet-cli>=0.85.1",
+    "flet-desktop>=0.85.1",
+    "flet-web>=0.85.1",
+]
+
+[tool.flet]
+org = "com.panenpintar"
+product = "PanenPintar"
+company = "PanenPintar"
+copyright = "Copyright (C) 2026 PanenPintar"
+
+[tool.flet.app]
+path = "src"
