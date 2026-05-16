@@ -76,6 +76,8 @@ def risk_pill(level: str) -> ft.Container:
 
 
 def stat_tile(*, label: str, value: str, icon: str, accent: str) -> ft.Container:
+    # Fixed label band so tiles in a 2×2 grid keep values aligned when labels wrap.
+    label_band_h = 40
     return ft.Container(
         content=ft.Column(
             [
@@ -87,16 +89,20 @@ def stat_tile(*, label: str, value: str, icon: str, accent: str) -> ft.Container
                             bgcolor=ft.Colors.with_opacity(0.12, accent),
                             border_radius=RADIUS["pill"],
                         ),
-                        ft.Text(
-                            label,
-                            size=11,
-                            color=PALETTE.text_muted,
-                            no_wrap=False,
+                        ft.Container(
+                            height=label_band_h,
+                            alignment=ft.Alignment.TOP_LEFT,
                             expand=True,
+                            content=ft.Text(
+                                label,
+                                size=11,
+                                color=PALETTE.text_muted,
+                                no_wrap=False,
+                            ),
                         ),
                     ],
                     spacing=6,
-                    vertical_alignment=ft.CrossAxisAlignment.CENTER,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
                 ),
                 ft.Text(
                     value,
@@ -106,9 +112,9 @@ def stat_tile(*, label: str, value: str, icon: str, accent: str) -> ft.Container
                     no_wrap=False,
                 ),
             ],
-            spacing=6,
+            spacing=8,
         ),
-        padding=10,
+        padding=ft.Padding.symmetric(horizontal=12, vertical=12),
         bgcolor=PALETTE.surface,
         border_radius=RADIUS["md"],
         border=ft.Border.all(1, PALETTE.border),

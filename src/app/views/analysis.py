@@ -248,16 +248,6 @@ def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
     available = option.confidence > 0
 
     accent = option.accent_color
-    badge: ft.Control
-    if option.recommended:
-        badge = pill(
-            "Terbaik secara untung-rugi",
-            color=PALETTE.primary,
-            bgcolor=PALETTE.primary_soft,
-            icon=ft.Icons.STAR_ROUNDED,
-        )
-    else:
-        badge = ft.Container()
 
     if not available:
         body = ft.Column(
@@ -325,8 +315,11 @@ def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
                 ft.Text(
                     "Kecocokan menilai kesesuaian tindakan dengan umur, gejala, dan cuaca. "
                     "Angka ini ikut mendukung rekomendasi, tetapi tidak mengalahkan selisih profit yang besar.",
-                    size=11,
                     color=PALETTE.text_muted,
+                    style=ft.TextStyle(
+                        size=11,
+                        height=1.45,
+                    ),
                 ),
                 ft.Divider(color=PALETTE.border, height=1),
                 ft.Column(
@@ -350,33 +343,68 @@ def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
             spacing=SPACING["md"],
         )
 
-    header = ft.Row(
+    icon_circle = ft.Container(
+        content=ft.Text(option.icon, size=20),
+        width=44,
+        height=44,
+        bgcolor=ft.Colors.with_opacity(0.12, accent),
+        border_radius=RADIUS["pill"],
+        alignment=ft.Alignment.CENTER,
+    )
+    title_block = ft.Column(
         [
-            ft.Container(
-                content=ft.Text(option.icon, size=20),
-                width=44,
-                height=44,
-                bgcolor=ft.Colors.with_opacity(0.12, accent),
-                border_radius=RADIUS["pill"],
-                alignment=ft.Alignment.CENTER,
-            ),
-            ft.Column(
-                [
-                    ft.Text(
-                        option.title,
-                        size=15,
-                        weight=ft.FontWeight.W_700,
-                        color=PALETTE.text_strong,
-                    ),
-                    ft.Text(option.subtitle, size=12, color=PALETTE.text_muted),
-                ],
-                spacing=2,
+            ft.Text(
+                option.title,
+                size=15,
+                weight=ft.FontWeight.W_700,
+                color=PALETTE.text_strong,
                 expand=True,
+                no_wrap=False,
             ),
-            badge,
+            ft.Text(
+                option.subtitle,
+                size=12,
+                color=PALETTE.text_muted,
+                expand=True,
+                no_wrap=False,
+            ),
         ],
-        spacing=12,
-        vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        spacing=2,
+        expand=True,
+    )
+    chips: list[ft.Control] = [
+        pill(
+            RISK_LABELS[option.risk],
+            color=RISK_COLORS[option.risk][0],
+            bgcolor=RISK_COLORS[option.risk][1],
+            icon=ft.Icons.SHIELD_OUTLINED,
+        ),
+    ]
+    if option.recommended:
+        chips.append(
+            pill(
+                "Terbaik secara untung-rugi",
+                color=PALETTE.primary,
+                bgcolor=PALETTE.primary_soft,
+                icon=ft.Icons.STAR_ROUNDED,
+            )
+        )
+    header = ft.Column(
+        [
+            ft.Row(
+                [icon_circle, title_block],
+                spacing=12,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+            ),
+            ft.Row(
+                controls=chips,
+                spacing=SPACING["sm"],
+                run_spacing=SPACING["sm"],
+                wrap=True,
+                vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            ),
+        ],
+        spacing=SPACING["sm"],
     )
 
     border_color = accent if option.recommended else PALETTE.border
@@ -385,17 +413,6 @@ def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
         content=ft.Column(
             [
                 header,
-                ft.Row(
-                    [
-                        pill(
-                            RISK_LABELS[option.risk],
-                            color=RISK_COLORS[option.risk][0],
-                            bgcolor=RISK_COLORS[option.risk][1],
-                            icon=ft.Icons.SHIELD_OUTLINED,
-                        ),
-                    ],
-                    spacing=8,
-                ),
                 body,
             ],
             spacing=SPACING["md"],

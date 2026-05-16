@@ -81,37 +81,61 @@ def view(state: AppState) -> ft.Control:
         rebuild()
 
     def build_crop_grid() -> ft.Control:
-        items: list[ft.Control] = []
-        for crop in CROPS:
+        tile_height = 104
+
+        def crop_tile(crop) -> ft.Control:
             active = crop.key == form_state["crop"]
-            items.append(
-                ft.Container(
-                    content=ft.Column(
-                        [
-                            ft.Text(crop.emoji, size=22),
-                            ft.Text(
-                                crop.name,
-                                size=12,
-                                weight=ft.FontWeight.W_600,
-                                color=ft.Colors.WHITE if active else PALETTE.text_strong,
-                            ),
-                        ],
-                        spacing=4,
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-                    ),
-                    padding=ft.Padding.symmetric(horizontal=14, vertical=12),
-                    bgcolor=PALETTE.primary if active else PALETTE.surface,
-                    border_radius=RADIUS["md"],
-                    border=ft.Border.all(
-                        1,
-                        PALETTE.primary if active else PALETTE.border,
-                    ),
-                    ink=True,
-                    on_click=lambda _e, k=crop.key: on_crop(k),
-                    animate=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
+            return ft.Container(
+                content=ft.Column(
+                    [
+                        ft.Text(
+                            crop.emoji,
+                            size=24,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            crop.name,
+                            size=12,
+                            weight=ft.FontWeight.W_600,
+                            color=ft.Colors.WHITE if active else PALETTE.text_strong,
+                            text_align=ft.TextAlign.CENTER,
+                            max_lines=2,
+                            overflow=ft.TextOverflow.ELLIPSIS,
+                        ),
+                    ],
+                    spacing=6,
+                    tight=True,
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                ),
+                height=tile_height,
+                expand=True,
+                alignment=ft.Alignment.CENTER,
+                padding=ft.Padding.symmetric(horizontal=10, vertical=12),
+                bgcolor=PALETTE.primary if active else PALETTE.surface,
+                border_radius=RADIUS["md"],
+                border=ft.Border.all(
+                    1,
+                    PALETTE.primary if active else PALETTE.border,
+                ),
+                ink=True,
+                on_click=lambda _e, k=crop.key: on_crop(k),
+                animate=ft.Animation(150, ft.AnimationCurve.EASE_OUT),
+            )
+
+        rows: list[ft.Control] = []
+        for i in range(0, len(CROPS), 2):
+            chunk = CROPS[i : i + 2]
+            row_tiles = [crop_tile(c) for c in chunk]
+            if len(row_tiles) == 1:
+                row_tiles.append(ft.Container(expand=True))
+            rows.append(
+                ft.Row(
+                    controls=row_tiles,
+                    spacing=8,
+                    vertical_alignment=ft.CrossAxisAlignment.START,
                 )
             )
-        return ft.Row(controls=items, wrap=True, spacing=8, run_spacing=8)
+        return ft.Column(controls=rows, spacing=8)
 
     def build_weather_chips() -> ft.Control:
         return chip_select(
