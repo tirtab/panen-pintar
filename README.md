@@ -154,14 +154,17 @@ profit    = hasil × harga × retained - biaya
 
 ### 4. Pilih rekomendasi terbaik
 
-Bukan asal profit tertinggi. Engine memberi **penalti risiko**:
+Bukan asal profit tertinggi. Engine memakai skor ekonomi yang disesuaikan risiko dan kecocokan tindakan:
 
 ```
-score = profit + risk_penalty + availability_penalty
+score = profit + confidence_bonus + risk_penalty + availability_penalty
+confidence_bonus = confidence × luas_lahan × Rp20
 risk_penalty = { low: 0, medium: -50.000, high: -200.000 }
 ```
 
-Filosofi: petani kecil tidak punya banyak modal cadangan, jadi lebih baik untung sedikit lebih kecil tapi aman, daripada untung besar yang berisiko gagal panen.
+Filosofi: petani kecil tidak punya banyak modal cadangan, jadi lebih baik untung sedikit lebih kecil tapi aman, daripada untung besar yang berisiko gagal panen. `confidence_bonus` membuat kecocokan tindakan ikut menentukan saat selisih profit antar opsi tipis, tetapi tidak mengalahkan selisih profit yang besar.
+
+Catatan teknis: risiko sudah menurunkan estimasi hasil dan profit melalui rumus `retained` di masing-masing opsi. `risk_penalty` bukan biaya nyata atau pengurang profit langsung, melainkan faktor kehati-hatian tambahan pada skor akhir agar opsi berisiko tinggi tidak terlalu mudah menang hanya karena estimasi profitnya sedikit lebih besar.
 
 ### 5. Hitung tingkat keyakinan (confidence)
 
@@ -171,7 +174,7 @@ Confidence mengukur **kecocokan opsi dengan kondisi saat ini**, bukan profit:
 - **Tunggu**: tinggi saat risk rendah; turun tajam saat risk tinggi.
 - **Panen Awal/Sekarang**: tinggi saat tanaman mendekati/melewati 100% siklus.
 
-Dengan pendekatan ini, opsi yang direkomendasikan selalu memiliki confidence yang sejalan.
+Dengan pendekatan ini, confidence berkorelasi dengan rekomendasi sebagai faktor pendukung, bukan sebagai satu-satunya penentu.
 
 ## Cara menjalankan
 

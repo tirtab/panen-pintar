@@ -36,6 +36,9 @@ def view(state: AppState) -> ft.Control:
             ]
         )
 
+    recommended = result.recommended
+    profit_color = PALETTE.primary if recommended.profit >= 0 else PALETTE.danger
+
     summary_card = card(
         bgcolor=PALETTE.primary_soft,
         border_color=PALETTE.primary_soft,
@@ -44,7 +47,7 @@ def view(state: AppState) -> ft.Control:
                 ft.Row(
                     [
                         ft.Text(
-                            f"Hasil analisis · {result.crop_name}",
+                            f"Keputusan utama · {result.crop_name}",
                             size=14,
                             weight=ft.FontWeight.W_700,
                             color=PALETTE.text_strong,
@@ -53,23 +56,70 @@ def view(state: AppState) -> ft.Control:
                     ],
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                 ),
-                ft.Text(result.summary, size=13, color=PALETTE.text),
+                ft.Text(
+                    f"Sebaiknya: {recommended.title}",
+                    size=22,
+                    weight=ft.FontWeight.W_700,
+                    color=PALETTE.text_strong,
+                ),
+                ft.Text(_recommendation_story(result), size=13, color=PALETTE.text),
                 ft.Row(
                     [
                         stat_tile(
-                            label="Skor risiko",
-                            value=f"{int(result.risk_score * 100)}%",
-                            icon=ft.Icons.SHIELD_OUTLINED,
-                            accent=RISK_COLORS[result.risk_level][0],
+                            label="Estimasi untung",
+                            value=format_currency(recommended.profit),
+                            icon=ft.Icons.TRENDING_UP_ROUNDED,
+                            accent=profit_color,
                         ),
                         stat_tile(
-                            label="Rekomendasi",
-                            value=result.recommended.title,
-                            icon=ft.Icons.AUTO_AWESOME_ROUNDED,
-                            accent=PALETTE.primary,
+                            label="Biaya tindakan",
+                            value=format_currency(recommended.cost),
+                            icon=ft.Icons.PAYMENTS_ROUNDED,
+                            accent=PALETTE.info,
                         ),
                     ],
                     spacing=SPACING["sm"],
+                ),
+                ft.Row(
+                    [
+                        stat_tile(
+                            label="Hasil terselamatkan",
+                            value=f"{recommended.expected_yield_kg} kg",
+                            icon=ft.Icons.AGRICULTURE_ROUNDED,
+                            accent=recommended.accent_color,
+                        ),
+                        stat_tile(
+                            label="Risiko kehilangan hasil",
+                            value=f"{RISK_LABELS[result.risk_level]} ({int(result.risk_score * 100)}%)",
+                            icon=ft.Icons.SHIELD_OUTLINED,
+                            accent=RISK_COLORS[result.risk_level][0],
+                        ),
+                    ],
+                    spacing=SPACING["sm"],
+                ),
+                ft.Container(
+                    content=ft.Row(
+                        [
+                            ft.Icon(
+                                ft.Icons.INFO_OUTLINE_ROUNDED,
+                                color=PALETTE.text_muted,
+                                size=16,
+                            ),
+                            ft.Text(
+                                "Angka utama di atas adalah cerita keputusan: untung-rugi, biaya, hasil terselamatkan, "
+                                "risiko kehilangan hasil, dan kecocokan tindakan. Kecocokan ikut menjadi faktor pendukung "
+                                "saat selisih untung-rugi antar opsi berdekatan.",
+                                size=12,
+                                color=PALETTE.text_muted,
+                                expand=True,
+                            ),
+                        ],
+                        spacing=8,
+                        vertical_alignment=ft.CrossAxisAlignment.START,
+                    ),
+                    padding=ft.Padding.all(10),
+                    bgcolor=ft.Colors.with_opacity(0.45, ft.Colors.WHITE),
+                    border_radius=RADIUS["md"],
                 ),
             ],
             spacing=SPACING["md"],
@@ -77,15 +127,17 @@ def view(state: AppState) -> ft.Control:
     )
 
     option_cards = [_option_card(state, opt) for opt in result.options]
+    alternatives_card = _alternatives_card(result.options, recommended)
 
     return ft.Column(
         controls=[
             back_header(
-                title="Pilihan keputusan",
-                subtitle="Bandingkan 3 opsi tindakan untuk Anda",
+                title="Hasil keputusan",
+                subtitle="Ringkasan tindakan paling masuk akal untuk kondisi ini",
                 on_back=lambda _: state.navigate("form"),
             ),
             summary_card,
+            alternatives_card,
             section_title("3 opsi tindakan"),
             *option_cards,
             ft.Container(height=SPACING["md"]),
@@ -106,6 +158,92 @@ def view(state: AppState) -> ft.Control:
     )
 
 
+def _recommendation_story(result) -> str:
+    option = result.recommended
+    risk_label = RISK_LABELS[result.risk_level].lower()
+
+    if option.key == "rawat":
+        return (
+            f"Risiko kehilangan hasil saat ini {risk_label}, tetapi tanaman masih layak diselamatkan. "
+            "Perawatan dipilih karena estimasi hasil yang terselamatkan masih sebanding dengan biaya."
+        )
+    if option.key == "panen_awal":
+        if option.title == "Panen Sekarang":
+            return (
+                f"Tanaman sudah siap dipanen dan risiko kehilangan hasil {risk_label}. "
+                "Memanen sekarang membantu mengunci hasil tanpa menambah biaya perawatan."
+            )
+        return (
+            f"Risiko kehilangan hasil {risk_label} dan umur tanaman sudah cukup untuk panen dini. "
+            "Panen lebih awal dipilih untuk mengunci hasil sebelum kondisi memburuk."
+        )
+    return (
+        f"Kondisi tanaman masih relatif aman dengan risiko kehilangan hasil {risk_label}. "
+        "Menunggu sambil memantau dipilih karena biaya rendah dan estimasi untungnya paling baik."
+    )
+
+
+def _alternatives_card(options: list[DecisionOption], recommended: DecisionOption) -> ft.Control:
+    rows: list[ft.Control] = []
+    for option in options:
+        if option.key == recommended.key:
+            continue
+        rows.append(
+            ft.Row(
+                [
+                    ft.Icon(
+                        ft.Icons.INFO_OUTLINE_ROUNDED,
+                        size=15,
+                        color=option.accent_color,
+                    ),
+                    ft.Text(
+                        f"{option.title}: {_alternative_reason(option, recommended)}",
+                        size=12,
+                        color=PALETTE.text,
+                        expand=True,
+                    ),
+                ],
+                spacing=8,
+                vertical_alignment=ft.CrossAxisAlignment.START,
+            )
+        )
+
+    return card(
+        content=ft.Column(
+            [
+                ft.Text(
+                    "Kenapa opsi lain tidak dipilih?",
+                    size=14,
+                    weight=ft.FontWeight.W_700,
+                    color=PALETTE.text_strong,
+                ),
+                *rows,
+            ],
+            spacing=8,
+        )
+    )
+
+
+def _alternative_reason(option: DecisionOption, recommended: DecisionOption) -> str:
+    if option.confidence == 0:
+        return "belum tersedia karena umur tanaman belum cukup untuk opsi ini."
+    if option.profit < 0:
+        return (
+            f"secara tindakan bisa dipertimbangkan, tetapi estimasi profitnya negatif "
+            f"({format_currency(option.profit)})."
+        )
+    if option.profit < recommended.profit:
+        return (
+            f"estimasi untungnya lebih rendah ({format_currency(option.profit)}) dibanding "
+            f"opsi utama ({format_currency(recommended.profit)})."
+        )
+    if option.risk == "high":
+        return "potensi untung ada, tetapi risiko kehilangan hasil masih terlalu besar."
+    if option.confidence > recommended.confidence:
+        return "kecocokan tindakannya tinggi, tetapi secara untung-rugi belum menjadi pilihan paling kuat."
+    return "masih layak sebagai alternatif, tetapi skor akhir untung-rugi dan risikonya kalah dari opsi utama."
+
+
 def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
     available = option.confidence > 0
 
@@ -113,7 +251,7 @@ def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
     badge: ft.Control
     if option.recommended:
         badge = pill(
-            "Rekomendasi terbaik",
+            "Terbaik secara untung-rugi",
             color=PALETTE.primary,
             bgcolor=PALETTE.primary_soft,
             icon=ft.Icons.STAR_ROUNDED,
@@ -176,13 +314,19 @@ def _option_card(state: AppState, option: DecisionOption) -> ft.Control:
                             accent=PALETTE.info,
                         ),
                         stat_tile(
-                            label="Keyakinan",
+                            label="Kecocokan tindakan",
                             value=f"{option.confidence}%",
-                            icon=ft.Icons.BOLT_ROUNDED,
+                            icon=ft.Icons.TASK_ALT_ROUNDED,
                             accent=PALETTE.accent,
                         ),
                     ],
                     spacing=SPACING["sm"],
+                ),
+                ft.Text(
+                    "Kecocokan menilai kesesuaian tindakan dengan umur, gejala, dan cuaca. "
+                    "Angka ini ikut mendukung rekomendasi, tetapi tidak mengalahkan selisih profit yang besar.",
+                    size=11,
+                    color=PALETTE.text_muted,
                 ),
                 ft.Divider(color=PALETTE.border, height=1),
                 ft.Column(

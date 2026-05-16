@@ -337,11 +337,15 @@ def analyze(input: DecisionInput) -> DecisionResult:
         ),
     ]
 
-    # Pick recommended option: prefer best profit but penalize high-risk wait
+    # Pick recommended option using a risk-adjusted economic score.
+    # Profit remains the main signal, risk reduces unsafe choices, and
+    # confidence adds a small area-scaled bonus so agronomic fit can decide
+    # close calls without overwhelming meaningful profit differences.
     def score(opt: DecisionOption) -> float:
         risk_penalty = {"low": 0.0, "medium": -50_000, "high": -200_000}[opt.risk]
+        confidence_bonus = opt.confidence * input.area_m2 * 20
         availability_penalty = -10_000_000 if opt.confidence == 0 else 0
-        return opt.profit + risk_penalty + availability_penalty
+        return opt.profit + confidence_bonus + risk_penalty + availability_penalty
 
     best = max(options, key=score)
     for opt in options:
