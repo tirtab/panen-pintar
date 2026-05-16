@@ -45,7 +45,7 @@ Aplikasi diagnosis tanaman yang ada (Plantix, TaniDoc, SinTa, Dr. Tania) sangat 
 
 - **Onboarding singkat** dengan penjelasan nilai utama aplikasi.
 - **Dashboard adaptif** untuk akses cepat ke komoditas dan keputusan terakhir.
-- **Form 5 langkah** dengan indikator progres: komoditas, umur tanam, gejala, cuaca, lahan & anggaran. State otomatis tersimpan saat berpindah halaman.
+- **Form 5 langkah** dengan indikator progres: komoditas, umur tanam, gejala, cuaca, lahan & anggaran. Form menampilkan harga acuan komoditas, progress umur tanam real-time, serta input lahan/anggaran dengan slider dan kolom angka langsung. State otomatis tersimpan saat berpindah halaman.
 - **Analisis 3 opsi**: Rawat Sekarang, Panen Lebih Awal/Panen Sekarang, Tunggu & Pantau. Setiap opsi menampilkan profit, biaya, hasil, keyakinan, dan alasan.
 - **Rencana 7 Hari** berupa linimasa langkah harian sesuai rekomendasi terbaik.
 - **Riwayat keputusan dapat diklik** untuk membuka kembali analisis lama secara penuh.
@@ -202,16 +202,23 @@ pip install flet flet-cli flet-desktop flet-web
 ### Jalankan sebagai aplikasi desktop
 
 ```bash
-flet run main.py
+flet run src/main.py
 ```
 
 ### Jalankan sebagai aplikasi web
 
 ```bash
-flet run --web main.py
+flet run --web src/main.py
 ```
 
 Aplikasi web akan dibuka pada `http://127.0.0.1:<port>` dan otomatis menyesuaikan layout tergantung lebar jendela browser.
+
+Jika menjalankan dari konfigurasi Flet di `pyproject.toml`, perintah singkat berikut juga dapat digunakan:
+
+```bash
+flet run
+flet run --web
+```
 
 ## Build untuk berbagai platform
 
@@ -251,13 +258,21 @@ flet build linux -v
 flet build web -v
 ```
 
+Untuk GitHub Pages, project ini sudah menyediakan workflow `.github/workflows/build-deploy.yml`. Workflow tersebut membuild web app dengan `uv` dan memakai route hash agar cocok untuk hosting statis:
+
+```bash
+uv run flet build web --yes --verbose --base-url <nama-repository> --route-url-strategy hash
+```
+
+Deploy otomatis berjalan saat ada push ke branch `main`, sedangkan pull request hanya menjalankan build check.
+
 ## Skenario demo yang disarankan
 
 Skenario presentasi yang paling bercerita:
 
 1. **Buka onboarding**, jelaskan nilai utama: bukan diagnosis, melainkan keputusan untung-rugi.
 2. **Pilih komoditas Cabai Merah** lewat Dashboard.
-3. **Isi form**: umur 70 hari, gejala daun menguning + bercak daun, cuaca hujan, lahan 120 m², anggaran Rp200.000.
+3. **Isi form**: umur 70 hari, gejala daun menguning + bercak daun, cuaca hujan, lahan 120 m², anggaran Rp500.000. Tunjukkan juga harga acuan komoditas serta input lahan/anggaran yang bisa digeser atau diketik langsung.
 4. **Lihat hasil analisis**: rekomendasi Rawat Sekarang dengan profit sekitar Rp2.6 juta, confidence ~91%. Tunjukkan ketiga opsi side-by-side.
 5. **Buka rencana 7 hari**: linimasa langkah harian.
 6. **Simpan** dan kembali ke Dashboard. Tunjukkan kartu "Keputusan terakhir".
@@ -285,14 +300,14 @@ Pendekatan **rule-based** menyederhanakan tiga konsep agronomi yang sudah diduku
 
 Siklus tanam mengikuti referensi umum budidaya Indonesia:
 
-| Komoditas | cycle_days |
-|---|---|
-| Cabai Merah | 90 |
-| Padi | 110 |
-| Jagung | 100 |
-| Tomat | 70 |
-| Kentang | 110 |
-| Bawang Merah | 65 |
+| Komoditas | cycle_days | Harga acuan/kg |
+|---|---:|---:|
+| Cabai Merah | 90 | Rp35.000 |
+| Padi | 110 | Rp7.000 |
+| Jagung | 100 | Rp6.000 |
+| Tomat | 70 | Rp12.000 |
+| Kentang | 110 | Rp14.000 |
+| Bawang Merah | 65 | Rp28.000 |
 
 Sumber: Agropedia, PTT Kementan, Liputan6.
 
